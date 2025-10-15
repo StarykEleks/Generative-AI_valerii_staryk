@@ -1,0 +1,1 @@
+# Generative-AI_CP1_valerii_staryk
