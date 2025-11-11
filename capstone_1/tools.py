@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "data", "books.db"))
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "data", "b.db"))
 os.makedirs(os.path.join(os.path.dirname(__file__), "tickets"), exist_ok=True)
 
 logger = logging.getLogger("tools")
