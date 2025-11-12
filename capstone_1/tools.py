@@ -53,18 +53,8 @@ def tool_get_dataset_overview() -> Dict[str, Any]:
         books = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM book_reviews")
         reviews = cur.fetchone()[0]
-        cur.execute("""
-            SELECT b.title, ROUND(AVG(CAST(br.review_rating AS REAL)),2) AS avg_rating, COUNT(*) AS n
-            FROM book_reviews br JOIN books b ON b.id = CAST(br.book_id AS INTEGER)
-            GROUP BY b.title HAVING n >= 5 ORDER BY avg_rating DESC, n DESC LIMIT 10
-        """ )
-        top_books = cur.fetchall()
-        cur.execute("""
-            SELECT substr(review_date,1,7) AS ym, COUNT(*) FROM book_reviews GROUP BY ym ORDER BY ym
-        """ )
-        monthly = cur.fetchall()
         con.close()
-        return {"books": books, "book_reviews": reviews, "top_books": top_books, "reviews_by_month": monthly}
+        return {"books": books, "book_reviews": reviews}
     except Exception as e:
         logger.exception("overview error")
         return {"error": str(e)}
@@ -87,11 +77,6 @@ def tool_create_support_ticket(title: str, body: str) -> Dict[str, Any]:
             return {"status":"error","provider":"github","details":r.text}
         except Exception as e:
             return {"status":"error","provider":"github","details":str(e)}
-    ticket = {"id": f"local-{dt.datetime.utcnow().isoformat()}".replace(":","-"),
-              "title": title, "body": body, "created_at": dt.datetime.utcnow().isoformat()+"Z", "provider":"local"}
-    path = os.path.join(os.path.dirname(__file__), "tickets", f"{ticket['id']}.json")
-    with open(path,"w") as f: json.dump(ticket, f, indent=2)
-    return {"status":"created","provider":"local","path": path}
 
 def get_tools_schema() -> List[dict]:
     return [
@@ -113,17 +98,3 @@ def get_tools_schema() -> List[dict]:
         {"type":"function","function":{"name":"create_support_ticket","description":"Create a support ticket (GitHub if configured; otherwise local).","parameters":{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"}},"required":["title","body"]}}}
     ]
 
-def local_intent_router(message: str):
-    m = message.lower()
-    if any(k in m for k in ["ticket","support","human","issue"]):
-        return ("create_support_ticket", {"title":"User requested support", "body": message})
-    if "select" in m:
-        return ("query_db", {"sql": message})
-    if "rating distribution" in m:
-        sql = """
-        SELECT review_rating AS rating, COUNT(*) AS n
-        FROM book_reviews
-        GROUP BY review_rating ORDER BY CAST(review_rating AS INTEGER);
-        """
-        return ("query_db", {"sql": sql})
-    return ("get_dataset_overview", {})
